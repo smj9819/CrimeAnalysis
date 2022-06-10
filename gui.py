@@ -3,14 +3,17 @@ from tkinter import ttk
 import tkintermapview
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import matplotlib.pyplot as plt
-import seaborn as sns
+import matplotlib.font_manager as fm
+# import seaborn as sns
 
 import pandas as pd
 import csv
 import json
 
-
-plt.rc('font', family='NanumGothic.ttf')
+path = 'HYHWPEQ.ttf'
+font_name = fm.FontProperties(fname=path).get_name()
+print(font_name)
+plt.rc('font', family=font_name)
 
 def loadCrimeData():
     global crime_data
@@ -147,8 +150,8 @@ def saveCorrGraph():
     data=pd.DataFrame({'CCTV':cctv_counts, 'Bell':bell_counts, 'PoliceMan':policeman_counts, 'Crime':crime_counts}, index=[2017,2018,2019,2020])
     corr_result=data.corr(method='pearson')
 
-    sns.pairplot(data,hue='Crime')
-    plt.savefig('pairplot.png', transparent=True)
+    # sns.pairplot(data,hue='Crime')
+    # plt.savefig('pairplot.png', transparent=True)
 
 saveCrimeCountGraph()
 saveCorrGraph()
@@ -209,6 +212,7 @@ def saveFacilitiesGraph():
 
 
 def polygon_click(polygon):
+    print('cliekced', polygon.name)
     current_city.set(polygon.name+' 범죄 발생 통계')
 
 root = Tk()
@@ -230,7 +234,7 @@ frm1_1.place(height=100, width=350, x=0,y=0)
 
 frm1_2 = ttk.Frame(frm1, padding=0)
 ttk.Label(frm1_2, text="\n시별 범죄 발생률(기준: 2017년도)", font=("Times","12","bold")).pack(anchor="w")
-image=PhotoImage(file="CrimeCounts.png")
+image=PhotoImage(file="CrimeCounts.png",master=frm1_2)
 label=ttk.Label(frm1_2, image=image)
 label.pack(anchor="nw")
 frm1_2.place(height=500, width=350, x=0, y=100)
@@ -241,7 +245,6 @@ frm1.place(height=600, width=350, x=0,y=0)
 frm2 = ttk.Frame(root, padding=30)
 frm2.place(height=600, width=1450, x=350, y=0)
 
-
 current_city = StringVar()
 current_city.set('---')
 
@@ -251,11 +254,15 @@ frm2_2.place(height=600, width=700, x=0, y=0)
 frm2_2_1=ttk.Frame(frm2_2, padding=0)
 frm2_2_1.place(height=400, width=700, x=0, y=0)
 
-selected_city_name=ttk.Label(frm2_2_1, textvariable=current_city, font=("Times","14","bold"))
-selected_city_name.pack(anchor="w")
+frm2_2_1_1=ttk.Frame(frm2_2_1, padding=0)
+frm2_2_1_1.place(height=50, width=700, x=0, y=0)
+selected_city_name=ttk.Label(frm2_2_1_1, textvariable=current_city, font=("Times","14","bold"))
+selected_city_name.pack(anchor="nw")
 
-image1=PhotoImage(file="Crime_2017_2018.png")
-label=ttk.Label(frm2_2_1, image=image1)
+frm2_2_1_2=ttk.Frame(frm2_2_1, padding=0)
+frm2_2_1_2.place(height=350, width=700, x=0, y=50)
+image1=PhotoImage(file="Crime_2017_2018.png",master=frm2_2_1_2)
+label=ttk.Label(frm2_2_1_2, image=image1)
 label.pack(anchor="w")
 
 frm2_2_2=ttk.Frame(frm2_2, padding=0)
@@ -373,7 +380,7 @@ frm3_1.place(height=600, width=350, x=0, y=600)
 frm3_2=ttk.Frame(root, padding=0)
 frm3_2.place(height=600, width=750, x=350, y=600)
 
-image2=PhotoImage(file="Crime_difference.png")
+image2=PhotoImage(file="Crime_difference.png",master=frm3_2)
 label=ttk.Label(frm3_2, image=image2)
 label.pack(anchor="w")
 
