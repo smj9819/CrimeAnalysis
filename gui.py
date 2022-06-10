@@ -17,19 +17,20 @@ def loadCrimeData():
     crime_data= pd.read_csv('./범죄_발생지_2017~2020.csv', encoding = 'cp949')
     # print(crime_data.head())
 
-def loadBellData():
+def loadBellData(city):
     global emergency_bell_data
     emergency_bell_data= pd.read_csv('./안전비상벨위치현황(개방표준).csv', encoding = 'cp949')
     emergency_bell_data=emergency_bell_data.loc[(emergency_bell_data['안전비상벨설치년도']==2017)]
-    emergency_bell_data=emergency_bell_data.loc[(emergency_bell_data['소재지지번주소'].str.contains('경기도'))]
+    emergency_bell_data=emergency_bell_data.loc[(emergency_bell_data['소재지지번주소'].str.contains(city))]
     # print(emergency_bell_data.head())
+    return emergency_bell_data
 
-def loadCCTVData():
+def loadCCTVData(city):
     global cctv_data
     cctv_data= pd.read_csv('./CCTV현황(개방표준).csv')
     cctv_data=cctv_data.loc[(cctv_data['설치년월'].str.contains('2017')==True)]
-    cctv_data=cctv_data.loc[(cctv_data['소재지지번주소'].str.contains('경기도')==True)]
-    # print(cctv_data.head())
+    cctv_data=cctv_data.loc[(cctv_data['소재지지번주소'].str.contains(city)==True)]
+    return cctv_data
 
 def loadPoliceData():
     global police_data
@@ -144,7 +145,7 @@ def saveCorrGraph():
     policeman_counts=[539, 148, 300, 45]
 
     data=pd.DataFrame({'CCTV':cctv_counts, 'Bell':bell_counts, 'PoliceMan':policeman_counts, 'Crime':crime_counts}, index=[2017,2018,2019,2020])
-    corr_result=data.corr(method='spearman')
+    corr_result=data.corr(method='pearson')
 
     sns.pairplot(data,hue='Crime')
     plt.savefig('pairplot.png', transparent=True)
@@ -153,31 +154,59 @@ saveCrimeCountGraph()
 saveCorrGraph()
 
 
-def getCrimeDifference(city1):
+def getCrimeDifference(city):
     global crime_difference
 
     # 2018 범죄 건수 - 2017 범죄 건수
-    crime_difference=getCrimeData(2017).iloc[:,0]
+    crime_difference=getCrimeData(2017).iloc[:,0].tolist()
 
-    temp_2017=getCrimeData(2017).iloc[:,2:]
-    temp_2018=getCrimeData(2018).iloc[:,2:]
+    # temp_2017=getCrimeData(2017)[['죄종별(1)',city]]
+    # temp_2018=getCrimeData(2018)[['죄종별(1)',city]]
 
-    cities=temp_2018.columns[:]
+    d1=getCrimeData(2017)[city].replace('-','0').astype(int).values
+    d2=getCrimeData(2018)[city].replace('-','0').astype(int).values
+    d3=[]
 
-    d1=[]
-    d2=[]
-    for city in cities:
-        d1.append(temp_2018[city].replace('-','0').astype(int))
-        d2.append(temp_2017[city].replace('-','0').astype(int))
+    for i in range(len(d1)):
+        d3.append(d2[i]-d1[i])
 
-    temp_2018=pd.concat(d1,axis=1)
-    temp_2017=pd.concat(d2,axis=1)
+    crime_difference=pd.DataFrame({'2017':d1,'2018':d2, 'Crime Diff':d3},index=crime_difference)
 
-    crime_difference=pd.concat([crime_difference,temp_2018-temp_2017],axis=1)
-    # print(crime_difference)
+    plt.clf()
+    plt.bar(range(len(crime_difference)),d3,label=crime_difference)
+    plt.savefig('Crime_difference.png', transparent=True, bbox_inches = 'tight')
+
+    return crime_difference
+
+getCrimeDifference('수원시')
+
+def saveCrimePieChart(city):
+    crime_diff=getCrimeDifference('수원시')
+    plt.clf()
+    plt.subplot(1,2,1)
+    plt.pie(crime_diff['2017'].tolist(),
+             labels=list(crime_diff.index),
+             startangle=90,
+             counterclock=True,
+             autopct=lambda p: '{:.2f}%'.format(p))
+    # plt.savefig('Crime2017.png', transparent=True, bbox_inches = 'tight')
+
+    plt.subplot(1,2,2)
+    plt.pie(crime_diff['2018'].tolist(),
+             labels=list(crime_diff.index),
+             startangle=90,
+             counterclock=True,
+             autopct=lambda p: '{:.2f}%'.format(p))
+    plt.savefig('Crime_2017_2018.png', transparent=True, bbox_inches = 'tight')
+
+saveCrimePieChart('수원시')
+
+def saveFacilitiesGraph():
+    cctv=loadCCTVData('수원시')
+    bell=loadBellData('수원시')
+    # plt.stackplot(x,y_list,labels = ['강력', '절도', '폭력', '지능', '풍속', '특별경제', '마약', '보건', '환경', '교통'])
 
 
-getCrimeDifference()
 
 def polygon_click(polygon):
     current_city.set(polygon.name+' 범죄 발생 통계')
@@ -197,23 +226,64 @@ ttk.Label(frm1_1, text="범죄예방시설물의 영향도 분석", font=("Times
 ttk.Label(frm1_1, text=" ").grid(column=0, row=2,columnspan=2, sticky=W)
 ttk.Label(frm1_1, text="팀원").grid(column=0, row=3, sticky=W)
 ttk.Label(frm1_1, text="강동영, 김우석, 김영준, 소문주, 조가희").grid(column=1, row=3, sticky=W)
-frm1_1.place(height=100, width=400, x=0,y=0)
+frm1_1.place(height=100, width=350, x=0,y=0)
 
 frm1_2 = ttk.Frame(frm1, padding=0)
 ttk.Label(frm1_2, text="\n시별 범죄 발생률(기준: 2017년도)", font=("Times","12","bold")).pack(anchor="w")
 image=PhotoImage(file="CrimeCounts.png")
 label=ttk.Label(frm1_2, image=image)
 label.pack(anchor="nw")
-frm1_2.place(height=500, width=400, x=0, y=100)
-
-frm1.place(height=600, width=400, x=0,y=0)
+frm1_2.place(height=500, width=350, x=0, y=100)
+frm1.place(height=600, width=350, x=0,y=0)
 
 
 # 지도
 frm2 = ttk.Frame(root, padding=30)
-frm2.place(height=600, width=700, x=400, y=0)
+frm2.place(height=600, width=1450, x=350, y=0)
 
-map_widget=tkintermapview.TkinterMapView(frm2,width=700,height=500,corner_radius=0)
+
+current_city = StringVar()
+current_city.set('---')
+
+frm2_2=ttk.Frame(frm2, padding=0)
+frm2_2.place(height=600, width=700, x=0, y=0)
+
+frm2_2_1=ttk.Frame(frm2_2, padding=0)
+frm2_2_1.place(height=400, width=700, x=0, y=0)
+
+selected_city_name=ttk.Label(frm2_2_1, textvariable=current_city, font=("Times","14","bold"))
+selected_city_name.pack(anchor="w")
+
+image1=PhotoImage(file="Crime_2017_2018.png")
+label=ttk.Label(frm2_2_1, image=image1)
+label.pack(anchor="w")
+
+frm2_2_2=ttk.Frame(frm2_2, padding=0)
+frm2_2_2.place(height=200, width=700, x=0, y=400)
+
+ttk.Label(frm2_2_2, text="").grid(column=0, row=0)
+
+idxs=list(crime_difference.index)
+cols=list(crime_difference.columns)
+for i in range(len(crime_difference.columns)):
+    ttk.Label(frm2_2_2, text=cols[i], font=("Times","12","bold")).grid(column=i+1, row=0, sticky=W)
+
+for j in range(int(len(idxs)/2)):
+    ttk.Label(frm2_2_2, text=idxs[j], font=("Times","12","bold")).grid(column=0, row=j+1, sticky=W)
+    for i in range(len(cols)):
+        ttk.Label(frm2_2_2, text=str(crime_difference.at[idxs[j],cols[i]]), font=("Times","10")).grid(column=i+1, row=j+1, sticky=W)
+
+ttk.Label(frm2_2_2, text="").grid(column=4, row=0)
+for i in range(len(crime_difference.columns)):
+    ttk.Label(frm2_2_2, text=cols[i], font=("Times","12","bold")).grid(column=i+5, row=0, sticky=W)
+for j in range(int(len(idxs)/2), len(idxs)):
+    ttk.Label(frm2_2_2, text=idxs[j], font=("Times","12","bold")).grid(column=4, row=j-4, sticky=W)
+    for i in range(len(cols)):
+        ttk.Label(frm2_2_2, text=str(crime_difference.at[idxs[j],cols[i]]), font=("Times","10")).grid(column=i+5, row=j-4, sticky=W)
+
+
+frm2_1 = ttk.Frame(frm2, padding=0)
+map_widget=tkintermapview.TkinterMapView(frm2_1,height=500,width=700,corner_radius=0)
 map_widget.set_position(37.394946, 127.111104)
 map_widget.place(height=500, width=700, x=0, y=0)
 
@@ -254,21 +324,21 @@ for feature in data["features"]:
                                    command=polygon_click,
                                    name=city)
 
-    
 map_widget.set_zoom(10)
 map_widget.pack()
+frm2_1.place(height=600, width=700, x=700, y=0)
 
-frm2_1=ttk.Frame(frm2,padding=10)
+frm2_1_2=ttk.Frame(frm2_1,padding=10)
 
 CheckVar1=IntVar()
 CheckVar2=IntVar()
 CheckVar3=IntVar()
 
-c1=Checkbutton(frm2_1,text="CCTV",variable=CheckVar1)
+c1=Checkbutton(frm2_1_2,text="CCTV",variable=CheckVar1)
 c1.grid(column=0, row=0)
-c2=Checkbutton(frm2_1,text="안전벨",variable=CheckVar2)
+c2=Checkbutton(frm2_1_2,text="안전벨",variable=CheckVar2)
 c2.grid(column=1, row=0)
-c3=Checkbutton(frm2_1,text="경찰서",variable=CheckVar3)
+c3=Checkbutton(frm2_1_2,text="경찰서",variable=CheckVar3)
 c3.grid(column=2, row=0)
 
 RadioVariety=IntVar()
@@ -281,69 +351,31 @@ def ok():
         str = "Radio 2 selected"
  
 
-radio1=Radiobutton(frm2_1, text="경찰관 수", value=1, variable=RadioVariety, command=ok)
+radio1=Radiobutton(frm2_1_2, text="경찰관 수", value=1, variable=RadioVariety, command=ok)
 radio1.grid(column=3, row=0)
-radio2=Radiobutton(frm2_1, text="범죄 발생 건수", value=2, variable=RadioVariety, command=ok)
+radio2=Radiobutton(frm2_1_2, text="범죄 발생 건수", value=2, variable=RadioVariety, command=ok)
 radio2.grid(column=4, row=0)
 
-
-frm2_1.pack()
-frm2_1.place(height=100, width=600, x=0, y=500)
-
+frm2_1_2.pack()
+frm2_1_2.place(height=100, width=700, x=0, y=500)
 
 
+      
 
 
+frm3 = ttk.Frame(root, padding=30)
+frm3.place(height=600, width=1100, x=0, y=600)
 
-current_city = StringVar()
-current_city.set('---')
-
-frm4=ttk.Frame(root, padding=30)
-selected_city_name=ttk.Label(frm4, textvariable=current_city, font=("Times","14","bold"))
-selected_city_name.pack(anchor="w")
-
-plt.clf()
-fig, ax=plt.subplots(1,2)
-fig.tight_layout(pad=3.0)
-
-ratio = [34, 32, 16, 18]
-labels = ['Apple', 'Banana', 'Melon', 'Grapes']
-ax[0].pie(ratio, labels=labels, autopct='%.1f%%')
-ax[0].set_title('2017 범죄 분포')
-
-ratio = [34, 32, 16, 18]
-labels = ['Apple', 'Banana', 'Melon', 'Grapes']
-ax[1].pie(ratio, labels=labels, autopct='%.1f%%')
-ax[1].set_title('2018 범죄 분포')
-
-canvas = FigureCanvasTkAgg(fig, master=frm4)
-canvas.draw()
-canvas.get_tk_widget().pack(anchor="w")
-
-# image=PhotoImage(file="pairplot.png")
-# label=ttk.Label(frm4, image=image)
-# label.pack(anchor="w")
-frm4.place(height=600, width=700, x=1100, y=0)
+frm3_1=ttk.Frame(root, padding=0)
+frm3_1.place(height=600, width=350, x=0, y=600)
 
 
-frm6 = ttk.Frame(root, padding=30)
-print(crime_difference)
-ttk.Label(frm6, text="").grid(column=0, row=0)
+frm3_2=ttk.Frame(root, padding=0)
+frm3_2.place(height=600, width=750, x=350, y=600)
 
-idxs=list(crime_difference.index)
-cols=list(crime_difference.columns)
-for i in range(len(crime_difference.columns)):
-    ttk.Label(frm6, text=cols[i], font=("Times","14","bold")).grid(column=i+1, row=0, sticky=W)
-
-for j in range(len(idxs)):
-    ttk.Label(frm6, text=idxs[j], font=("Times","14","bold")).grid(column=0, row=j+1, sticky=W)
-    for i in range(len(cols)):
-        ttk.Label(frm6, text=str(crime_difference.at[idxs[j],cols[i]]), font=("Times","14")).grid(column=i+1, row=j+1, sticky=W)
-
-# ttk.Label(frm6, text="", font=("Times","14")).grid(column=0, row=5, columnspan=5, sticky=W)
-# ttk.Label(frm6, text="범죄율과 가장 상관관계가 높은 항목은 경찰관, 안전벨입니다", font=("Times","14")).grid(column=0, row=6, columnspan=5, sticky=W)
-# ttk.Label(frm6, text="범죄율과 가장 상관관계가 낮은 항목은 CCTV입니다", font=("Times","14")).grid(column=0, row=7, columnspan=5, sticky=W)
-frm6.place(height=600, width=1100, x=0, y=600)
+image2=PhotoImage(file="Crime_difference.png")
+label=ttk.Label(frm3_2, image=image2)
+label.pack(anchor="w")
 
 
 frm5 = ttk.Frame(root, padding=30)
