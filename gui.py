@@ -15,7 +15,6 @@ import json
 
 path = 'NanumGothic.ttf'
 font_name = fm.FontProperties(fname=path).get_name()
-print(font_name)
 plt.rc('font', family=font_name)
 
 def loadCrimeData():
@@ -100,13 +99,18 @@ def getCrimeData(year):
 def saveCrimeCountGraph():
     global temp_2017
 
+    fig, ax1 = plt.subplots()
+    fig.set_size_inches(5, 4)
+
     temp=getCrimeData(2017)
-    # Basic stacked area chart.
+
+    # 시별 범죄 발생 건수
     x=temp.columns[2:]
     y_list=[]
 
     summations=[]
     cities=temp.columns[2:]
+
     bar_colors=[]
 
     for i in range(10):
@@ -116,30 +120,54 @@ def saveCrimeCountGraph():
     for city in cities:
         y=temp[city]
         summations.append(sum([int(i) for i in y]))
-        bar_colors.append('blue')
+        bar_colors.append('black')
 
     bar_colors[len(bar_colors)-1]='red'
 
     temp_2017=pd.DataFrame({'City':x, 'Counts':summations})
-    temp_2017=temp_2017.sort_values(['Counts','City'], ascending=True)
+    temp_2017=temp_2017.sort_values(['City'], ascending=True)
+    
+    new_cities=list(temp_2017['City'])
+    new_counts=list(temp_2017['Counts'])
 
-    plt.barh(range(len(x)), list(temp_2017['Counts']), color=bar_colors)
+    plt.plot(new_cities, new_counts, alpha=0.6)
+    fig.autofmt_xdate(rotation=45)
 
-    ax = plt.gca()
-    ax.axes.xaxis.set_visible(False)
-    ax.axes.xaxis.set_ticks([])
 
-    plt.gca().spines['right'].set_visible(False) #오른쪽 테두리 제거
-    plt.gca().spines['top'].set_visible(False) #위 테두리 제거
-    plt.gca().spines['left'].set_visible(False) #왼쪽 테두리 제거
-    plt.gca().spines['bottom'].set_visible(False) #아래쪽 테두리 제거
+    ax2 = ax1.twinx()
 
-    # plt.title('Total crime counts by city', fontsize=18)
-    # plt.ylabel('City', fontsize=15)
-    # plt.xlabel('Crime counts', fontsize=15)
-    plt.yticks(range(len(x)), list(temp_2017['City']), fontsize=10, rotation=0)
-    plt.savefig('CrimeCounts.png', transparent=True, bbox_inches = 'tight')
+    temp_cctv=[]
+    temp_bell=[]
+    temp_police=[]
+    for city in new_cities:
+        temp_bell.append(len(loadBellData(2017, city))-len(loadBellData(2016, city)))
+        temp_cctv.append(len(loadCCTVData(2017, city))-len(loadCCTVData(2016, city)))
+        temp_police.append(sum(loadPoliceData(2017,city)['인원증감']))
 
+    bar_width = 0.25
+    indexs1=[]
+    for i in range(len(cities)):
+        indexs1.append(i+1)
+
+    indexs2=[]
+    for i in range(len(cities)):
+        indexs2.append(i+1+bar_width)
+
+    indexs3=[]
+    for i in range(len(cities)):
+        indexs3.append(i+1+2*bar_width)
+
+    plt.bar(indexs1, temp_cctv, color='r',width=bar_width, alpha=0.5, label='CCTV')
+    plt.bar(indexs2, temp_bell, color='g',width=bar_width, alpha=0.5, label='Bell')
+    plt.bar(indexs3, temp_police, color='b',width=bar_width, alpha=0.5, label='PoliceMan')
+
+    plt.legend()
+
+    plt.title("Increasement of facilities and amount of crime", fontsize=14)
+    plt.savefig('CrimeFacilityCounts.png', transparent=True, bbox_inches = 'tight')
+
+    print(pd.DataFrame({'city':new_cities, 'counts':new_counts, 'cctv':temp_cctv, 'bell':temp_bell, 'police':temp_police}))
+    
 def saveCorrGraph():
     global corr_result
 
@@ -184,24 +212,8 @@ def getCrimeDifference(city):
 
 getCrimeDifference('수원시')
 
-def saveCrimePieChart(city):
+def saveCrimeDiffChart(city):
     crime_diff=getCrimeDifference('수원시')
-    # plt.clf()
-    # plt.subplot(1,2,1)
-    # plt.pie(crime_diff['2017'].tolist(),
-    #          labels=list(crime_diff.index),
-    #          startangle=90,
-    #          counterclock=True,
-    #          autopct=lambda p: '{:.2f}%'.format(p))
-    # # plt.savefig('Crime2017.png', transparent=True, bbox_inches = 'tight')
-
-    # plt.subplot(1,2,2)
-    # plt.pie(crime_diff['2018'].tolist(),
-    #          labels=list(crime_diff.index),
-    #          startangle=90,
-    #          counterclock=True,
-    #          autopct=lambda p: '{:.2f}%'.format(p))
-    # plt.savefig('Crime_2017_2018.png', transparent=True, bbox_inches = 'tight')
 
     plt.clf()
     fig = plt.gcf()
@@ -224,14 +236,13 @@ def saveCrimePieChart(city):
     for i, colname in enumerate(zip(category_names)):
         widths = data[:, i]
         starts = data_cum[:, i] - widths
-        rects = plt.barh(['2017','2018'], widths, left=starts, height=0.4,
-                        label=category_names[i])
+        rects = plt.barh(['2017','2018'], widths, left=starts, height=0.4, alpha=0.5, label=category_names[i])
 
-    plt.title("Crime ratio, amount in 2017-2018", fontsize=14)
+    # plt.title("Crime ratio, amount in 2017-2018", fontsize=14)
     plt.legend(loc="lower left", ncol=len(category_names)//2)
     plt.savefig('Crime_2017_2018_2.png', dpi=100, transparent=True, bbox_inches = 'tight')
 
-saveCrimePieChart('수원시')
+saveCrimeDiffChart('수원시')
 
 def saveFacilitiesGraph():
     crime2017=getCrimeData(2017)
@@ -293,7 +304,6 @@ saveFacilitiesGraph()
 
 def polygon_click(polygon):
     print('cliekced', polygon.name)
-    current_city.set(polygon.name+' 범죄 발생 통계')
 
 root = Tk()
 
@@ -309,25 +319,25 @@ ttk.Label(frm1_1, text="데이터 분석 기초 5조 팀프로젝트", font=("Ti
 ttk.Label(frm1_1, text="범죄예방시설물의 영향도 분석", font=("Times","14","bold")).grid(column=0, row=1,columnspan=2, sticky=W)
 ttk.Label(frm1_1, text=" ").grid(column=0, row=2,columnspan=2, sticky=W)
 ttk.Label(frm1_1, text="팀원").grid(column=0, row=3, sticky=W)
-ttk.Label(frm1_1, text="강동영, 김우석, 김영준, 소문주, 조가희").grid(column=1, row=3, sticky=W)
-frm1_1.place(height=100, width=420, x=0,y=0)
+ttk.Label(frm1_1, text="강동영, 김우석, 곽영진, 소문주, 조가희").grid(column=1, row=3, sticky=W)
+frm1_1.place(height=100, width=600, x=0,y=0)
 
 frm1_2 = ttk.Frame(frm1, padding=0)
-ttk.Label(frm1_2, text="\n시별 범죄 발생률(기준: 2017년도)", font=("Times","12","bold")).pack(anchor="w")
-image=PhotoImage(file="CrimeCounts.png",master=frm1_2)
+ttk.Label(frm1_2, text="\n2017-2018년도 범죄 양상 비교", font=("Times","12","bold")).pack(anchor="w")
+image=PhotoImage(file="Crime_2017_2018_2.png",master=frm1_2)
 label=ttk.Label(frm1_2, image=image)
 label.pack(anchor="nw")
-frm1_2.place(height=450, width=420, x=0, y=100)
-frm1.place(height=550, width=420, x=0,y=0)
+frm1_2.place(height=450, width=600, x=0, y=100)
+frm1.place(height=550, width=600, x=0,y=0)
 
 
 frm2 = ttk.Frame(root, padding=30)
-frm2.place(height=550, width=1350, x=420, y=0)
+frm2.place(height=550, width=1200, x=550, y=0)
 
 frm2_1 = ttk.Frame(frm2, padding=0)
-map_widget=tkintermapview.TkinterMapView(frm2_1,height=550,width=1350,corner_radius=0)
+map_widget=tkintermapview.TkinterMapView(frm2_1,height=550,width=1200,corner_radius=0)
 map_widget.set_position(37.394946, 127.111104)
-map_widget.place(height=550, width=1350, x=0, y=0)
+map_widget.place(height=550, width=1200, x=0, y=0)
 
 gyeonggi_geojson='./TL_SCCO_SIG.json'
 
@@ -336,7 +346,7 @@ with open(gyeonggi_geojson, 'r', encoding='utf-8') as file:
 
 map_widget.set_zoom(10)
 map_widget.pack()
-frm2_1.place(height=550, width=1350, x=0, y=0)
+frm2_1.place(height=550, width=1200, x=0, y=0)
 
 
 
@@ -381,7 +391,7 @@ def check1Changed():
     # cctv
     if CheckVar1.get()==1:
         print("cctv checked")
-        cctv_data=loadCCTVData('경기도')
+        cctv_data=loadCCTVData(2017, '경기도')
         cctv_image = ImageTk.PhotoImage(Image.open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "cctv.png")).resize((300, 200)))
         for i in range(0,len(cctv_data)):
             m=map_widget.set_marker(cctv_data.iloc[i]['위도'], cctv_data.iloc[i]['경도'], text=cctv_data.iloc[i]['설치목적구분'], image=cctv_image, image_zoom_visibility=(14, float("inf")))
@@ -397,7 +407,7 @@ def check2Changed():
     # bell
     if CheckVar2.get()==1:
         bell_image = ImageTk.PhotoImage(Image.open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "bell.png")).resize((300, 200)))
-        emergency_bell_data=loadBellData('경기도')
+        emergency_bell_data=loadBellData(2017, '경기도')
         for i in range(0,len(emergency_bell_data)):
             m=map_widget.set_marker(emergency_bell_data.iloc[i]['위도'], emergency_bell_data.iloc[i]['경도'], image=bell_image, image_zoom_visibility=(14, float("inf")))
             m.hide_image(False)
@@ -424,11 +434,12 @@ for feature in geojson["features"]:
 
 def radioChanged():
     global currentPolygon
+
     if currentPolygon is not None:
         currentPolygon.delete()
 
     if RadioVariety.get() == 1:    
-        police_data=loadPoliceData('경기')
+        police_data=loadPoliceData(2017,'경기')
 
         print('경찰관 checked')
         colors=["green", "orange", "orangered1","orangered4"]
@@ -449,7 +460,6 @@ def radioChanged():
                 else:
                     flag=0
                     
-                print(coords)
                 currentPolygon = map_widget.set_polygon(coords,
                                     fill_color=colors[flag],
                                     border_width=2,
@@ -505,12 +515,9 @@ label.pack(anchor="w")
 frm3_2=ttk.Frame(frm3, padding=0)
 frm3_2.place(height=500, width=600, x=550, y=0)
 
-image5=PhotoImage(file="Crime_2017_2018_2.png",master=frm3_1)
+image5=PhotoImage(file="CrimeFacilityCounts.png",master=frm3_1)
 label=ttk.Label(frm3_2, image=image5)
 label.pack(anchor="w")
-
-current_city = StringVar()
-current_city.set('---')
 
 # frm2_2_1=ttk.Frame(frm2_2, padding=0)
 # frm2_2_1.place(height=550, width=600, x=0, y=0)
@@ -522,6 +529,15 @@ current_city.set('---')
 
 frm5 = ttk.Frame(root, padding=30)
 frm5.place(height=500, width=600, x=1150,y=550)
+
+frm5_1 = ttk.Frame(frm5, padding=0)
+frm5_1.place(height=30, width=600, x=0, y=0)
+
+ttk.Label(frm5_1, text="Correlation Analysis", font=("Times","14","bold")).pack(anchor="center")
+
+frm5_2 = ttk.Frame(frm5, padding=0)
+frm5_2.place(height=500, width=600, x=0,y=30)
+
 listOfIndex=list(corr_result.index)
 
 flag=False
@@ -550,18 +566,20 @@ else:
     strNonAffectable=strNonAffectable+"없습니다"
 
 
-ttk.Label(frm5, text="").grid(column=0, row=0)
+ttk.Label(frm5_2, text="").grid(column=0, row=0)
 for i in range(len(listOfIndex)):
-    ttk.Label(frm5, text=listOfIndex[i], font=("Times","12","bold")).grid(column=i+1, row=0, sticky=W)
+    ttk.Label(frm5_2, text=listOfIndex[i], font=("Times","12","bold")).grid(column=i+1, row=0, sticky=W)
 
 for j in range(len(listOfIndex)):
-    ttk.Label(frm5, text=listOfIndex[j], font=("Times","12","bold")).grid(column=0, row=j+1, sticky=W)
+    ttk.Label(frm5_2, text=listOfIndex[j], font=("Times","12","bold")).grid(column=0, row=j+1, sticky=W)
     for i in range(len(listOfIndex)):
-        ttk.Label(frm5, text=str(corr_result.at[listOfIndex[j],listOfIndex[i]]), font=("Times","12")).grid(column=i+1, row=j+1, sticky=W)
+        ttk.Label(frm5_2, text=str(corr_result.at[listOfIndex[j],listOfIndex[i]]), font=("Times","12")).grid(column=i+1, row=j+1, sticky=W)
 
-ttk.Label(frm5, text="", font=("Times","14")).grid(column=0, row=5, columnspan=5, sticky=W)
-ttk.Label(frm5, text=strAffectable, font=("Times","12")).grid(column=0, row=6, columnspan=5, sticky=W)
-ttk.Label(frm5, text=strNonAffectable, font=("Times","12")).grid(column=0, row=7, columnspan=5, sticky=W)
+ttk.Label(frm5_2, text="", font=("Times","14")).grid(column=0, row=5, columnspan=5, sticky=W)
+ttk.Label(frm5_2, text=strAffectable, font=("Times","12")).grid(column=0, row=6, columnspan=5, sticky=W)
+ttk.Label(frm5_2, text=strNonAffectable, font=("Times","12")).grid(column=0, row=7, columnspan=5, sticky=W)
+ttk.Label(frm5_2, text="", font=("Times","12")).grid(column=0, row=8, columnspan=5, sticky=W)
+ttk.Label(frm5_2, text="범죄가 많이 발생한 곳, cctv수 상관", font=("Times","12")).grid(column=0, row=9, columnspan=5, sticky=W)
 
 
 root.mainloop()
