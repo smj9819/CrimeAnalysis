@@ -22,23 +22,18 @@ def loadCrimeData():
     # print(crime_data.head())
 
 def loadBellData(city):
-    global emergency_bell_data
     emergency_bell_data= pd.read_csv('./안전비상벨위치현황(개방표준).csv', encoding = 'cp949')
     emergency_bell_data=emergency_bell_data.loc[(emergency_bell_data['안전비상벨설치년도']==2017)]
     emergency_bell_data=emergency_bell_data.loc[(emergency_bell_data['소재지지번주소'].str.contains(city))]
-    # print(emergency_bell_data.head())
     return emergency_bell_data
 
 def loadCCTVData(city):
-    global cctv_data
     cctv_data= pd.read_csv('./CCTV현황(개방표준).csv')
     cctv_data=cctv_data.loc[(cctv_data['설치년월'].str.contains('2017')==True)]
     cctv_data=cctv_data.loc[(cctv_data['소재지지번주소'].str.contains(city)==True)]
     return cctv_data
 
-def loadPoliceData():
-    global police_data
-
+def loadPoliceData(city):
     datas = dict()
     with open('./경찰청_경찰서별정원_20211014.csv',encoding='cp949') as f:
         data = csv.reader(f)
@@ -66,8 +61,8 @@ def loadPoliceData():
         new_data.writerows(results)
 
     result_data = pd.read_csv('./result.csv', encoding='euc-kr')  # author: 가희. 환경 마다 인코딩 에러가 날수 있어서 encoding='cp949' 추가함
-    police_data =result_data[result_data['주소'].str.contains('경기도')].reset_index(drop=True)
-    # print(police_data.head())
+    police_data =result_data[result_data['주소'].str.contains(city)].reset_index(drop=True)
+    return police_data
 
 def getCrimeData(year):
     data= pd.read_csv('./범죄_발생지_2017~2020.csv', encoding = 'cp949')
@@ -324,31 +319,6 @@ gyeonggi_geojson='./TL_SCCO_SIG.json'
 with open(gyeonggi_geojson, 'r', encoding='utf-8') as file:
     data = json.load(file)
 
-colors=["green", "orange", "orangered1","orangered4"]
-for feature in data["features"]:
-    city = feature["properties"]["SIG_KOR_NM"]
-
-    for coords in feature["geometry"]["coordinates"]:
-        # print(coords)
-        for coord in coords:
-            coord[0], coord[1]=coord[1], coord[0]
-
-        cnt=temp_2017.loc[(temp_2017['City'] == city)]['Counts']
-        if len(cnt)==0:
-            polygon_1 = map_widget.set_polygon(coords,
-                                   fill_color=colors[0],
-                                   # outline_color="red",
-                                   border_width=1,
-                                   command=polygon_click,
-                                   name=city)
-        else:
-            polygon_1 = map_widget.set_polygon(coords,
-                                   fill_color=colors[list(cnt)[0]//10000],
-                                   # outline_color="red",
-                                   border_width=1,
-                                   command=polygon_click,
-                                   name=city)
-
 map_widget.set_zoom(10)
 map_widget.pack()
 frm2_1.place(height=550, width=1350, x=0, y=0)
@@ -388,40 +358,112 @@ frm2_1_2=ttk.Frame(frm2_1,padding=10)
 
 CheckVar1=IntVar()
 CheckVar2=IntVar()
-CheckVar3=IntVar()
 
-c1=Checkbutton(frm2_1_2,text="CCTV",variable=CheckVar1)
-c1.grid(column=0, row=0)
-c2=Checkbutton(frm2_1_2,text="안전벨",variable=CheckVar2)
-c2.grid(column=1, row=0)
-c3=Checkbutton(frm2_1_2,text="경찰서",variable=CheckVar3)
-c3.grid(column=2, row=0)
-
-RadioVariety=IntVar()
-
-def ok():                
-    if RadioVariety.get() == 1:
-        # cctv
+def check1Changed():
+    # cctv
+    cctv_data=loadCCTVData('수원시')
+    if CheckVar1.get()==1:
+        print('cctv checked')
         for i in range(0,len(cctv_data),5):
         # 이거 다 띄우면 화면에 버퍼링생김
         # 일단 5개 마다 한개씩 띄움
-            map_widget.set_marker(cctv_data.iloc[i]['위도'], cctv_data.iloc[i]['경도'], text=cctv_data.iloc[i]['설치목적구분'], color='b')
+            map_widget.set_marker(cctv_data.iloc[i]['위도'], cctv_data.iloc[i]['경도'], text=cctv_data.iloc[i]['설치목적구분'])
+    else:
+        print('cctv unchecked')
 
-    if RadioVariety.get() == 2:
-        # bell
+def check2Changed():
+    # bell
+    emergency_bell_data=loadBellData('수원시')
+    if CheckVar2.get()==1:
+        print('bell checked')
         for i in range(0,len(emergency_bell_data),5):
         # 이거 다 띄우면 화면에 버퍼링생김
         # 일단 5개 마다 한개씩 띄움
-            map_widget.set_marker(emergency_bell_data.iloc[i]['위도'], emergency_bell_data.iloc[i]['경도'], color='r')
+            map_widget.set_marker(emergency_bell_data.iloc[i]['위도'], emergency_bell_data.iloc[i]['경도'])
+    else:
+        print('bell unchecked')
+        
+c1=Checkbutton(frm2_1_2,text="CCTV",variable=CheckVar1, command=check1Changed)
+c1.grid(column=0, row=0)
+c2=Checkbutton(frm2_1_2,text="안전벨",variable=CheckVar2, command=check2Changed)
+c2.grid(column=1, row=0)
+
+RadioVariety=IntVar()
+
+def radioChanged():
+    
+    if RadioVariety.get() == 1:            
+        police_data=loadPoliceData('경기도')
+        print(police_data)
+
+        print('경찰관 checked')
+        colors=["green", "orange", "orangered1","orangered4"]
+        for feature in data["features"]:
+            city = feature["properties"]["SIG_KOR_NM"]
+
+            for coords in feature["geometry"]["coordinates"]:
+                # print(coords)
+                for coord in coords:
+                    coord[0], coord[1]=coord[1], coord[0]
+
+                # cnt=police_data.loc[(police_data['주소'].str.contains(city))]['증감율']
+
+                for i in range(len(police_data)):
+                    if(city in police_data.loc[police_data.index[i],'주소']):
+                        cnt=police_data.loc[police_data.index[i],'인원증감']
+
+                
+                if cnt<=0:
+                    flag=3
+                elif cnt<=10:
+                    flag=2
+                elif cnt<=20:
+                    flag=1
+                else:
+                    flag=0
+                    
+                polygon_1 = map_widget.set_polygon(coords,
+                                    fill_color=colors[flag],
+                                    # outline_color="red",
+                                    border_width=1,
+                                    command=polygon_click,
+                                    name=city)
+
+    if RadioVariety.get() == 2:
+        print('발생 건수 checked')
+        colors=["green", "orange", "orangered1","orangered4"]
+        for feature in data["features"]:
+            city = feature["properties"]["SIG_KOR_NM"]
+
+            for coords in feature["geometry"]["coordinates"]:
+                # print(coords)
+                for coord in coords:
+                    coord[0], coord[1]=coord[1], coord[0]
+
+                cnt=temp_2017.loc[(temp_2017['City'] == city)]['Counts']
+                if len(cnt)==0:
+                    polygon_1 = map_widget.set_polygon(coords,
+                                        fill_color=colors[0],
+                                        # outline_color="red",
+                                        border_width=1,
+                                        command=polygon_click,
+                                        name=city)
+                else:
+                    polygon_1 = map_widget.set_polygon(coords,
+                                        fill_color=colors[list(cnt)[0]//10000],
+                                        # outline_color="red",
+                                        border_width=1,
+                                        command=polygon_click,
+                                        name=city)
  
 
-radio1=Radiobutton(frm2_1_2, text="경찰관 수", value=1, variable=RadioVariety, command=ok)
-radio1.grid(column=3, row=0)
-radio2=Radiobutton(frm2_1_2, text="범죄 발생 건수", value=2, variable=RadioVariety, command=ok)
-radio2.grid(column=4, row=0)
+radio1=Radiobutton(frm2_1_2, text="경찰관 수", value=1, variable=RadioVariety, command=radioChanged)
+radio1.grid(column=2, row=0)
+radio2=Radiobutton(frm2_1_2, text="범죄 발생 건수", value=2, variable=RadioVariety, command=radioChanged)
+radio2.grid(column=3, row=0)
 
 frm2_1_2.pack()
-frm2_1_2.place(height=50, width=500, x=0, y=470)
+frm2_1_2.place(height=50, width=400, x=0, y=470)
 
       
 
@@ -429,6 +471,7 @@ frm3 = ttk.Frame(root, padding=30)
 frm3.place(height=500, width=1150, x=0, y=550)
 
 frm3_1=ttk.Frame(frm3, padding=0)
+
 frm3_1.place(height=500, width=550, x=0, y=0)
 
 image4=PhotoImage(file="FaciDiff.png",master=frm3_1)
