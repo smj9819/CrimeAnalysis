@@ -6,6 +6,8 @@ import matplotlib.pyplot as plt
 import matplotlib.font_manager as fm
 import numpy as np
 import seaborn as sns
+from PIL import Image, ImageTk
+import os
 
 import pandas as pd
 import csv
@@ -359,29 +361,39 @@ frm2_1_2=ttk.Frame(frm2_1,padding=10)
 CheckVar1=IntVar()
 CheckVar2=IntVar()
 
+cctvMarkers=[]
+cctv_data=loadCCTVData('수원시')
+cctv_image = ImageTk.PhotoImage(Image.open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "images", "cctv.jpg")).resize((300, 200)))
+for i in range(0,len(cctv_data)):
+    m=map_widget.set_marker(cctv_data.iloc[i]['위도'], cctv_data.iloc[i]['경도'], text=cctv_data.iloc[i]['설치목적구분'], image=cctv_image, image_zoom_visibility=(14, float("inf")))
+    m.hide_image(True)
+    cctvMarkers.append(m)
+
+bellMarkers=[]
+bell_image = ImageTk.PhotoImage(Image.open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "images", "bell.jpg")).resize((300, 200)))
+emergency_bell_data=loadBellData('수원시')
+for i in range(0,len(emergency_bell_data)):
+    m=map_widget.set_marker(emergency_bell_data.iloc[i]['위도'], emergency_bell_data.iloc[i]['경도'], image=bell_image)
+    m.hide_image(True)
+    bellMarkers.append(m)
+
 def check1Changed():
     # cctv
-    cctv_data=loadCCTVData('수원시')
     if CheckVar1.get()==1:
-        print('cctv checked')
-        for i in range(0,len(cctv_data),5):
-        # 이거 다 띄우면 화면에 버퍼링생김
-        # 일단 5개 마다 한개씩 띄움
-            map_widget.set_marker(cctv_data.iloc[i]['위도'], cctv_data.iloc[i]['경도'], text=cctv_data.iloc[i]['설치목적구분'])
+        for marker in cctvMarkers:
+            marker.hide_image(False)
     else:
-        print('cctv unchecked')
+        for marker in cctvMarkers:
+            marker.hide_image(True)
 
 def check2Changed():
     # bell
-    emergency_bell_data=loadBellData('수원시')
     if CheckVar2.get()==1:
-        print('bell checked')
-        for i in range(0,len(emergency_bell_data),5):
-        # 이거 다 띄우면 화면에 버퍼링생김
-        # 일단 5개 마다 한개씩 띄움
-            map_widget.set_marker(emergency_bell_data.iloc[i]['위도'], emergency_bell_data.iloc[i]['경도'])
+        for marker in bellMarkers:
+            marker.hide_image(False)
     else:
-        print('bell unchecked')
+        for marker in bellMarkers:
+            marker.hide_image(True)
         
 c1=Checkbutton(frm2_1_2,text="CCTV",variable=CheckVar1, command=check1Changed)
 c1.grid(column=0, row=0)
@@ -390,11 +402,13 @@ c2.grid(column=1, row=0)
 
 RadioVariety=IntVar()
 
+currentPolygon=None
+
 def radioChanged():
-    
-    if RadioVariety.get() == 1:            
-        police_data=loadPoliceData('경기도')
-        print(police_data)
+    currentPolygon.delete()
+
+    if RadioVariety.get() == 1:    
+        police_data=loadPoliceData('수원')
 
         print('경찰관 checked')
         colors=["green", "orange", "orangered1","orangered4"]
@@ -406,13 +420,10 @@ def radioChanged():
                 for coord in coords:
                     coord[0], coord[1]=coord[1], coord[0]
 
-                # cnt=police_data.loc[(police_data['주소'].str.contains(city))]['증감율']
-
                 for i in range(len(police_data)):
                     if(city in police_data.loc[police_data.index[i],'주소']):
                         cnt=police_data.loc[police_data.index[i],'인원증감']
 
-                
                 if cnt<=0:
                     flag=3
                 elif cnt<=10:
@@ -422,7 +433,7 @@ def radioChanged():
                 else:
                     flag=0
                     
-                polygon_1 = map_widget.set_polygon(coords,
+                currentPolygon = map_widget.set_polygon(coords,
                                     fill_color=colors[flag],
                                     # outline_color="red",
                                     border_width=1,
@@ -442,14 +453,14 @@ def radioChanged():
 
                 cnt=temp_2017.loc[(temp_2017['City'] == city)]['Counts']
                 if len(cnt)==0:
-                    polygon_1 = map_widget.set_polygon(coords,
+                    currentPolygon = map_widget.set_polygon(coords,
                                         fill_color=colors[0],
                                         # outline_color="red",
                                         border_width=1,
                                         command=polygon_click,
                                         name=city)
                 else:
-                    polygon_1 = map_widget.set_polygon(coords,
+                    currentPolygon = map_widget.set_polygon(coords,
                                         fill_color=colors[list(cnt)[0]//10000],
                                         # outline_color="red",
                                         border_width=1,
