@@ -110,6 +110,7 @@ def saveCrimeCountGraph():
 
     summations=[]
     cities=temp.columns[2:]
+    bar_colors=[]
 
     for i in range(10):
         y=list(temp.iloc[i])[2:]
@@ -118,12 +119,14 @@ def saveCrimeCountGraph():
     for city in cities:
         y=temp[city]
         summations.append(sum([int(i) for i in y]))
+        bar_colors.append('blue')
+
+    bar_colors[len(bar_colors)-1]='red'
 
     temp_2017=pd.DataFrame({'City':x, 'Counts':summations})
     temp_2017=temp_2017.sort_values(['Counts','City'], ascending=True)
-    # print(temp_2017)
 
-    plt.barh(range(len(x)), list(temp_2017['Counts']))
+    plt.barh(range(len(x)), list(temp_2017['Counts']), color=bar_colors)
 
     ax = plt.gca()
     ax.axes.xaxis.set_visible(False)
@@ -148,9 +151,9 @@ def saveCorrGraph():
     bell_counts=[1733, 863, 1257, 59]
     policeman_counts=[539, 148, 300, 45]
 
-    plt.clf()
-    plt.bar(range(3),[cctv_counts[0],bell_counts[0], policeman_counts[0]], label=['CCTV','Bell','PoliceMan'])
-    plt.savefig('FaciDiff.png', transparent=True, bbox_inches = 'tight')
+    # plt.clf()
+    # plt.bar(range(3),[cctv_counts[0],bell_counts[0], policeman_counts[0]], label=['CCTV','Bell','PoliceMan'])
+    # plt.savefig('FaciDiff.png', transparent=True, bbox_inches = 'tight')
 
     data=pd.DataFrame({'CCTV':cctv_counts, 'Bell':bell_counts, 'PoliceMan':policeman_counts, 'Crime':crime_counts}, index=[2017,2018,2019,2020])
     corr_result=data.corr(method='pearson')
@@ -183,7 +186,6 @@ def getCrimeDifference(city):
     plt.bar(range(len(crime_difference)),d3,label=crime_difference)
     plt.savefig('Crime_difference.png', transparent=True, bbox_inches = 'tight')
 
-    print(crime_difference)
     return crime_difference
 
 getCrimeDifference('수원시')
@@ -209,7 +211,7 @@ def saveCrimePieChart(city):
 
     plt.clf()
     fig = plt.gcf()
-    fig.set_size_inches(6, 4)
+    fig.set_size_inches(5, 3)
 
     year2017=list(crime_diff['2017'].values) # [672,5494,7919,7973,595,1133,158,318,32,14266]
     year2018=list(crime_diff['2018'].values) # [637,5381,8071,8723,613,1131,98,355,35,11159]
@@ -228,20 +230,56 @@ def saveCrimePieChart(city):
     for i, colname in enumerate(zip(category_names)):
         widths = data[:, i]
         starts = data_cum[:, i] - widths
-        rects = plt.barh(['2017','2018'], widths, left=starts, height=0.5,
+        rects = plt.barh(['2017','2018'], widths, left=starts, height=0.4,
                         label=category_names[i])
 
+    plt.title("Crime ratio, amount in 2017-2018", fontsize=14)
     plt.legend(loc="lower left", ncol=len(category_names)//2)
     plt.savefig('Crime_2017_2018_2.png', dpi=100, transparent=True, bbox_inches = 'tight')
 
 saveCrimePieChart('수원시')
 
 def saveFacilitiesGraph():
-    cctv=loadCCTVData('수원시')
-    bell=loadBellData('수원시')
-    # plt.stackplot(x,y_list,labels = ['강력', '절도', '폭력', '지능', '풍속', '특별경제', '마약', '보건', '환경', '교통'])
+    # TODO: 문주님
+    # 전처리 데이터프레임 객체 값 -> df = pd.DataFrame([[124, 55, 122],[444, 22, 555]]) 라면
 
+    # 피쳐 - 전처리 된 데이터프레임 객체 컬럼 별 선택 (numpy array든 파이썬 list)
+    Y_cctv = [100, 400]  # df['CCTV']
+    Y_bell = [5555, 2325] # df['BELL']
+    Y_police = [125412, 24142] # df['POLICE']
+    Y_crime = [80909, 12141] # df['CRIME']
 
+    #  figure 전체를 컨트롤하는 변수와 그래프 각각을 조절할 수 있는 변수
+    f, axes = plt.subplots(1, 3)
+
+    # 격자 크기 설정
+    f.set_size_inches((16, 5))
+
+    # 서브플롯들 X축은 모두 17' 18' 년도
+    x = ['2017', '2018']
+
+    axes[0].bar(x, Y_cctv, color = ['black', 'g'], alpha = 0.4, width=0.4)
+    axes[0].set_title("CCTV Trend", fontsize=14)
+    # axes[0].set_ylabel("count", fontsize=14)
+    # axes[0].set_xlabel("year", fontsize=14)
+
+    axes[1].bar(x, Y_bell, color = ['black', 'g'], alpha = 0.4, width=0.4)
+    axes[1].set_title("Bell Trend", fontsize=14)
+    # axes[1].set_xlabel("year", fontsize=14)
+
+    axes[2].bar(x, Y_police, color = ['black', 'g'], alpha = 0.4, width=0.4)
+    axes[2].set_title("Police Trend", fontsize=14)
+    # axes[2].set_xlabel("year", fontsize=14)
+
+    # axes[3].bar(x, Y_crime, color = ['black', 'g'], alpha = 0.4, width=0.4)
+    # axes[3].set_title("Crime Trend", fontsize=14)
+    # axes[3].set_xlabel("year", fontsize=14)
+    
+    fig = plt.gcf()
+    fig.set_size_inches(6, 4)
+    plt.savefig('FaciDiff.png', dpi=100, transparent=True, bbox_inches = 'tight')
+
+saveFacilitiesGraph()
 
 def polygon_click(polygon):
     print('cliekced', polygon.name)
@@ -280,13 +318,6 @@ frm2_1 = ttk.Frame(frm2, padding=0)
 map_widget=tkintermapview.TkinterMapView(frm2_1,height=550,width=1350,corner_radius=0)
 map_widget.set_position(37.394946, 127.111104)
 map_widget.place(height=550, width=1350, x=0, y=0)
-
-gyeonggi_geojson='./TL_SCCO_SIG.json'
-
-# for i in range(0,len(cctv_data),5):
-#     # 이거 다 띄우면 화면에 버퍼링생김
-#     # 일단 5개 마다 한개씩 띄움
-#     map_widget.set_marker(cctv_data.iloc[i]['위도'], cctv_data.iloc[i]['경도'], text=cctv_data.iloc[i]['설치목적구분'])
 
 gyeonggi_geojson='./TL_SCCO_SIG.json'
 
@@ -370,10 +401,18 @@ RadioVariety=IntVar()
 
 def ok():                
     if RadioVariety.get() == 1:
+        # cctv
+        for i in range(0,len(cctv_data),5):
+        # 이거 다 띄우면 화면에 버퍼링생김
+        # 일단 5개 마다 한개씩 띄움
+            map_widget.set_marker(cctv_data.iloc[i]['위도'], cctv_data.iloc[i]['경도'], text=cctv_data.iloc[i]['설치목적구분'], color='b')
 
-        str = "Radio 1 selected"
     if RadioVariety.get() == 2:
-        str = "Radio 2 selected"
+        # bell
+        for i in range(0,len(emergency_bell_data),5):
+        # 이거 다 띄우면 화면에 버퍼링생김
+        # 일단 5개 마다 한개씩 띄움
+            map_widget.set_marker(emergency_bell_data.iloc[i]['위도'], emergency_bell_data.iloc[i]['경도'], color='r')
  
 
 radio1=Radiobutton(frm2_1_2, text="경찰관 수", value=1, variable=RadioVariety, command=ok)
@@ -382,8 +421,7 @@ radio2=Radiobutton(frm2_1_2, text="범죄 발생 건수", value=2, variable=Radi
 radio2.grid(column=4, row=0)
 
 frm2_1_2.pack()
-frm2_1_2.place(height=50, width=700, x=0, y=450)
-
+frm2_1_2.place(height=50, width=500, x=0, y=470)
 
       
 
@@ -405,8 +443,8 @@ image5=PhotoImage(file="Crime_2017_2018_2.png",master=frm3_1)
 label=ttk.Label(frm3_2, image=image5)
 label.pack(anchor="w")
 
-# current_city = StringVar()
-# current_city.set('---')
+current_city = StringVar()
+current_city.set('---')
 
 # frm2_2_1=ttk.Frame(frm2_2, padding=0)
 # frm2_2_1.place(height=550, width=600, x=0, y=0)
