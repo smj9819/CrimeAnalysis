@@ -21,26 +21,25 @@ plt.rc('font', family=font_name)
 def loadCrimeData():
     global crime_data
     crime_data= pd.read_csv('./범죄_발생지_2017~2020.csv', encoding = 'cp949')
-    # print(crime_data.head())
 
-def loadBellData(city):
+def loadBellData(year, city):
     emergency_bell_data= pd.read_csv('./안전비상벨위치현황(개방표준).csv', encoding = 'cp949')
-    emergency_bell_data=emergency_bell_data.loc[(emergency_bell_data['안전비상벨설치년도']==2017)]
+    emergency_bell_data=emergency_bell_data.loc[(emergency_bell_data['안전비상벨설치년도']==year)]
     emergency_bell_data=emergency_bell_data.loc[(emergency_bell_data['소재지지번주소'].str.contains(city))]
     return emergency_bell_data
 
-def loadCCTVData(city):
+def loadCCTVData(year, city):
     cctv_data= pd.read_csv('./CCTV현황(개방표준).csv')
-    cctv_data=cctv_data.loc[(cctv_data['설치년월'].str.contains('2017')==True)]
+    cctv_data=cctv_data.loc[(cctv_data['설치년월'].str.contains(str(year))==True)]
     cctv_data=cctv_data.loc[(cctv_data['소재지지번주소'].str.contains(city)==True)]
     return cctv_data
 
-def loadPoliceData(city):
+def loadPoliceData(year, city):
     datas = dict()
     with open('./경찰청_경찰서별정원_20211014.csv',encoding='cp949') as f:
         data = csv.reader(f)
         for row in data:
-            if '2016년' in row or '2017년' in row:
+            if str(year-1)+'년' in row or str(year)+'년' in row:
                 ps = row[2]
                 if ps not in datas:
                     datas[ps] = dict()
@@ -50,8 +49,8 @@ def loadPoliceData(city):
     results = []
     for ps in datas:
         if len(datas[ps]) < 3: continue
-        p_2016 = datas[ps]['2016년']
-        p_2017 = datas[ps]['2017년']
+        p_2016 = datas[ps][str(year-1)+'년']
+        p_2017 = datas[ps][str(year)+'년']
         var = p_2017 - p_2016
         var_rate = round(var / p_2016 * 100, 4)
         if abs(var) < 0: continue  # 증감이 몇 이상인 데이터만 뽑아오도록 결정하는 부분
@@ -64,6 +63,7 @@ def loadPoliceData(city):
 
     result_data = pd.read_csv('./result.csv', encoding='euc-kr')  # author: 가희. 환경 마다 인코딩 에러가 날수 있어서 encoding='cp949' 추가함
     police_data =result_data[result_data['주소'].str.contains(city)].reset_index(drop=True)
+
     return police_data
 
 def getCrimeData(year):
@@ -162,10 +162,7 @@ def saveCorrGraph():
 saveCrimeCountGraph()
 saveCorrGraph()
 
-
 def getCrimeDifference(city):
-    global crime_difference
-
     # 2018 범죄 건수 - 2017 범죄 건수
     crime_difference=getCrimeData(2017).iloc[:,0].tolist()
 
@@ -237,14 +234,30 @@ def saveCrimePieChart(city):
 saveCrimePieChart('수원시')
 
 def saveFacilitiesGraph():
-    # TODO: 문주님
-    # 전처리 데이터프레임 객체 값 -> df = pd.DataFrame([[124, 55, 122],[444, 22, 555]]) 라면
+    crime2017=getCrimeData(2017)
+    crime2018=getCrimeData(2018)
+    
+    print(crime2017)
+    sum2017=0
+    for col in crime2017.columns:
+        if col=='죄종별(1)' or col=='죄종별(2)':
+            continue
+        
+        for idx in crime2017.index:
+            sum2017=sum2017+int(crime2017.loc[idx,col].replace('-','0'))
 
-    # 피쳐 - 전처리 된 데이터프레임 객체 컬럼 별 선택 (numpy array든 파이썬 list)
-    Y_cctv = [100, 400]  # df['CCTV']
-    Y_bell = [5555, 2325] # df['BELL']
-    Y_police = [125412, 24142] # df['POLICE']
-    Y_crime = [80909, 12141] # df['CRIME']
+    sum2018=0
+    for col in crime2018.columns:
+        if col=='죄종별(1)' or col=='죄종별(2)':
+            continue
+        
+        for idx in crime2018.index:
+            sum2018=sum2018+int(crime2018.loc[idx,col].replace('-','0'))
+            
+    Y_cctv = [len(loadCCTVData(2017,'경기')), len(loadCCTVData(2018,'경기'))]  # df['CCTV']
+    Y_bell = [len(loadBellData(2017,'경기')), len(loadBellData(2017,'경기'))] # df['BELL']
+    Y_police = [sum(loadPoliceData(2017,'경기')['인원증감']), sum(loadPoliceData(2018,'경기')['인원증감'])] # df['POLICE']
+    Y_crime = [sum2017, sum2018] # df['CRIME']
 
     #  figure 전체를 컨트롤하는 변수와 그래프 각각을 조절할 수 있는 변수
     f, axes = plt.subplots(1, 3)
@@ -285,7 +298,7 @@ def polygon_click(polygon):
 root = Tk()
 
 root.title("5조 데분기 과제 산출물")
-root.geometry("1800x1100")
+root.geometry("1800x1000")
 # root.configure(bg='white')
 root.resizable(False, False)
 
@@ -319,7 +332,7 @@ map_widget.place(height=550, width=1350, x=0, y=0)
 gyeonggi_geojson='./TL_SCCO_SIG.json'
 
 with open(gyeonggi_geojson, 'r', encoding='utf-8') as file:
-    data = json.load(file)
+    geojson = json.load(file)
 
 map_widget.set_zoom(10)
 map_widget.pack()
@@ -362,38 +375,36 @@ CheckVar1=IntVar()
 CheckVar2=IntVar()
 
 cctvMarkers=[]
-cctv_data=loadCCTVData('수원시')
-cctv_image = ImageTk.PhotoImage(Image.open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "images", "cctv.jpg")).resize((300, 200)))
-for i in range(0,len(cctv_data)):
-    m=map_widget.set_marker(cctv_data.iloc[i]['위도'], cctv_data.iloc[i]['경도'], text=cctv_data.iloc[i]['설치목적구분'], image=cctv_image, image_zoom_visibility=(14, float("inf")))
-    m.hide_image(True)
-    cctvMarkers.append(m)
-
 bellMarkers=[]
-bell_image = ImageTk.PhotoImage(Image.open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "images", "bell.jpg")).resize((300, 200)))
-emergency_bell_data=loadBellData('수원시')
-for i in range(0,len(emergency_bell_data)):
-    m=map_widget.set_marker(emergency_bell_data.iloc[i]['위도'], emergency_bell_data.iloc[i]['경도'], image=bell_image)
-    m.hide_image(True)
-    bellMarkers.append(m)
 
 def check1Changed():
     # cctv
     if CheckVar1.get()==1:
-        for marker in cctvMarkers:
-            marker.hide_image(False)
+        print("cctv checked")
+        cctv_data=loadCCTVData('경기도')
+        cctv_image = ImageTk.PhotoImage(Image.open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "cctv.png")).resize((300, 200)))
+        for i in range(0,len(cctv_data)):
+            m=map_widget.set_marker(cctv_data.iloc[i]['위도'], cctv_data.iloc[i]['경도'], text=cctv_data.iloc[i]['설치목적구분'], image=cctv_image, image_zoom_visibility=(14, float("inf")))
+            m.hide_image(False)
+            cctvMarkers.append(m)
     else:
+        print("cctv unchecked")
         for marker in cctvMarkers:
-            marker.hide_image(True)
+            # marker.hide_image(False)
+            marker.delete()
 
 def check2Changed():
     # bell
     if CheckVar2.get()==1:
-        for marker in bellMarkers:
-            marker.hide_image(False)
+        bell_image = ImageTk.PhotoImage(Image.open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "bell.png")).resize((300, 200)))
+        emergency_bell_data=loadBellData('경기도')
+        for i in range(0,len(emergency_bell_data)):
+            m=map_widget.set_marker(emergency_bell_data.iloc[i]['위도'], emergency_bell_data.iloc[i]['경도'], image=bell_image, image_zoom_visibility=(14, float("inf")))
+            m.hide_image(False)
+            bellMarkers.append(m)
     else:
         for marker in bellMarkers:
-            marker.hide_image(True)
+            marker.delete()
         
 c1=Checkbutton(frm2_1_2,text="CCTV",variable=CheckVar1, command=check1Changed)
 c1.grid(column=0, row=0)
@@ -404,22 +415,27 @@ RadioVariety=IntVar()
 
 currentPolygon=None
 
+for feature in geojson["features"]:
+    city = feature["properties"]["SIG_KOR_NM"]
+
+    for coords in feature["geometry"]["coordinates"]:
+        for coord in coords:
+            coord[0], coord[1]=coord[1], coord[0]
+
 def radioChanged():
-    currentPolygon.delete()
+    global currentPolygon
+    if currentPolygon is not None:
+        currentPolygon.delete()
 
     if RadioVariety.get() == 1:    
-        police_data=loadPoliceData('수원')
+        police_data=loadPoliceData('경기')
 
         print('경찰관 checked')
         colors=["green", "orange", "orangered1","orangered4"]
-        for feature in data["features"]:
+        for feature in geojson["features"]:
             city = feature["properties"]["SIG_KOR_NM"]
 
             for coords in feature["geometry"]["coordinates"]:
-                # print(coords)
-                for coord in coords:
-                    coord[0], coord[1]=coord[1], coord[0]
-
                 for i in range(len(police_data)):
                     if(city in police_data.loc[police_data.index[i],'주소']):
                         cnt=police_data.loc[police_data.index[i],'인원증감']
@@ -433,30 +449,26 @@ def radioChanged():
                 else:
                     flag=0
                     
+                print(coords)
                 currentPolygon = map_widget.set_polygon(coords,
                                     fill_color=colors[flag],
-                                    # outline_color="red",
-                                    border_width=1,
+                                    border_width=2,
                                     command=polygon_click,
                                     name=city)
 
     if RadioVariety.get() == 2:
         print('발생 건수 checked')
         colors=["green", "orange", "orangered1","orangered4"]
-        for feature in data["features"]:
+        for feature in geojson["features"]:
             city = feature["properties"]["SIG_KOR_NM"]
 
             for coords in feature["geometry"]["coordinates"]:
-                # print(coords)
-                for coord in coords:
-                    coord[0], coord[1]=coord[1], coord[0]
 
                 cnt=temp_2017.loc[(temp_2017['City'] == city)]['Counts']
                 if len(cnt)==0:
                     currentPolygon = map_widget.set_polygon(coords,
                                         fill_color=colors[0],
-                                        # outline_color="red",
-                                        border_width=1,
+                                        border_width=2,
                                         command=polygon_click,
                                         name=city)
                 else:
