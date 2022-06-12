@@ -102,7 +102,26 @@ def saveCrimeCountGraph():
     fig, ax1 = plt.subplots()
     fig.set_size_inches(5, 4)
 
-    temp=getCrimeData(2017)
+    temp1=getCrimeData(2018)
+    temp2=getCrimeData(2017)
+
+    temp=getCrimeData(2018)
+
+    for col in temp1.columns:
+        if(col=='죄종별(1)' or col=='죄종별(2)'):
+            continue
+        
+        for idx in temp1.index:
+            if(temp1.loc[idx,col]=='-'):
+                temp.loc[idx,col]=-int(temp2.loc[idx,col])
+            elif(temp2.loc[idx,col]=='-'):
+                temp.loc[idx,col]=0
+            elif(temp1.loc[idx,col]=='-' and temp2.loc[idx,col]=='-'):
+                temp.loc[idx,col]=0
+            else:
+                temp.loc[idx,col]=int(temp1.loc[idx,col])-int(temp2.loc[idx,col])
+    
+    print(temp)
 
     # 시별 범죄 발생 건수
     x=temp.columns[2:]
@@ -110,6 +129,19 @@ def saveCrimeCountGraph():
 
     summations=[]
     cities=temp.columns[2:]
+
+    bar_width = 0.25
+    indexs1=[]
+    for i in range(len(cities)):
+        indexs1.append(i+1)
+
+    indexs2=[]
+    for i in range(len(cities)):
+        indexs2.append(i+1+bar_width)
+
+    indexs3=[]
+    for i in range(len(cities)):
+        indexs3.append(i+1+2*bar_width)
 
     bar_colors=[]
 
@@ -130,7 +162,8 @@ def saveCrimeCountGraph():
     new_cities=list(temp_2017['City'])
     new_counts=list(temp_2017['Counts'])
 
-    plt.plot(new_cities, new_counts, alpha=0.6)
+    plt.plot(indexs2, new_counts, alpha=0.6)
+    plt.xlabel('City')
     fig.autofmt_xdate(rotation=45)
 
 
@@ -144,18 +177,6 @@ def saveCrimeCountGraph():
         temp_cctv.append(len(loadCCTVData(2017, city))-len(loadCCTVData(2016, city)))
         temp_police.append(sum(loadPoliceData(2017,city)['인원증감']))
 
-    bar_width = 0.25
-    indexs1=[]
-    for i in range(len(cities)):
-        indexs1.append(i+1)
-
-    indexs2=[]
-    for i in range(len(cities)):
-        indexs2.append(i+1+bar_width)
-
-    indexs3=[]
-    for i in range(len(cities)):
-        indexs3.append(i+1+2*bar_width)
 
     plt.bar(indexs1, temp_cctv, color='r',width=bar_width, alpha=0.5, label='CCTV')
     plt.bar(indexs2, temp_bell, color='g',width=bar_width, alpha=0.5, label='Bell')
@@ -579,7 +600,9 @@ ttk.Label(frm5_2, text="", font=("Times","14")).grid(column=0, row=5, columnspan
 ttk.Label(frm5_2, text=strAffectable, font=("Times","12")).grid(column=0, row=6, columnspan=5, sticky=W)
 ttk.Label(frm5_2, text=strNonAffectable, font=("Times","12")).grid(column=0, row=7, columnspan=5, sticky=W)
 ttk.Label(frm5_2, text="", font=("Times","12")).grid(column=0, row=8, columnspan=5, sticky=W)
-ttk.Label(frm5_2, text="범죄가 많이 발생한 곳, cctv수 상관", font=("Times","12")).grid(column=0, row=9, columnspan=5, sticky=W)
+ttk.Label(frm5_2, text="CCTV 증설이 작년 대비 감소한 화성시(-512대), 이천시(-172대)에 대해", font=("Times","12")).grid(column=0, row=9, columnspan=5, sticky=W)
+ttk.Label(frm5_2, text="범죄가 작년 대비 -18, -18 정도의 미미한 범죄율 감소효과가 보인것을 확인 가능", font=("Times","12")).grid(column=0, row=10, columnspan=5, sticky=W)
+ttk.Label(frm5_2, text="CCTV 증설률이 하락하는 점이 범죄 건수가 감소하는 것에 부정적인 영향을 미침", font=("Times","12")).grid(column=0, row=11, columnspan=5, sticky=W)
 
 
 root.mainloop()
