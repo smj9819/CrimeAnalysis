@@ -182,7 +182,7 @@ def saveCrimeCountGraph():
     plt.bar(indexs2, temp_bell, color='g',width=bar_width, alpha=0.5, label='Bell')
     plt.bar(indexs3, temp_police, color='b',width=bar_width, alpha=0.5, label='PoliceMan')
 
-    plt.legend()
+    # plt.legend()
 
     plt.title("Increasement of facilities and amount of crime", fontsize=14)
     plt.savefig('CrimeFacilityCounts.png', transparent=True, bbox_inches = 'tight')
@@ -192,6 +192,7 @@ def saveCrimeCountGraph():
 def saveCorrGraph():
     global corr_result
 
+    loadBellData(2020, "경기")
     crime_counts=[409122, 381295, 385160, 383565]
     cctv_counts=[2565, 3932, 3679, 289]
     bell_counts=[1733, 863, 1257, 59]
